@@ -29,6 +29,9 @@ class StatusItemView: NSView, StatusItemViewProtocol {
             view.imageView.image = StatusItemTool.menuImage
 
             if let button = statusItem?.button {
+                // 修复 macOS 15+ 兼容性：在添加新子视图前移除所有现有子视图
+                // 这样可以避免在新版 macOS 中因为多次添加子视图而导致的崩溃
+                button.subviews.forEach { $0.removeFromSuperview() }
                 button.addSubview(view)
                 button.imagePosition = .imageOverlaps
             } else {

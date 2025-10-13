@@ -185,9 +185,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let isMenuIconHidden = onScreenRect.midX < leftScreenX
 
         var isCoverdByNotch = false
-        if #available(macOS 12, *), NSScreen.screens.count == 1, let screen = NSScreen.screens.first, let leftArea = screen.auxiliaryTopLeftArea, let rightArea = screen.auxiliaryTopRightArea {
-            if onScreenRect.minX > leftArea.maxX, onScreenRect.maxX < rightArea.minX {
-                isCoverdByNotch = true
+        if #available(macOS 12, *), NSScreen.screens.count == 1, let screen = NSScreen.screens.first {
+            // 修复 macOS 15+ 兼容性：添加额外的安全检查
+            // auxiliaryTopLeftArea 和 auxiliaryTopRightArea 在某些情况下可能为 nil
+            if let leftArea = screen.auxiliaryTopLeftArea, let rightArea = screen.auxiliaryTopRightArea {
+                // 添加额外的尺寸验证，避免无效的 CGRect 导致崩溃
+                if leftArea.width > 0 && rightArea.width > 0 && leftArea.maxX < rightArea.minX {
+                    if onScreenRect.minX > leftArea.maxX, onScreenRect.maxX < rightArea.minX {
+                        isCoverdByNotch = true
+                    }
+                }
             }
         }
 
