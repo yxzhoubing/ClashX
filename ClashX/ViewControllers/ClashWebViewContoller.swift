@@ -98,7 +98,12 @@ class ClashWebViewContoller: NSViewController {
             webview.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 0))
             return
         }
-        let defaultUrl = "http://127.0.0.1:\(ConfigManager.shared.apiPort)/ui/"
+        let port = ConfigManager.shared.apiPort
+        let secret = ConfigManager.shared.apiSecret
+        var defaultUrl = "http://127.0.0.1:\(port)/ui/?hostname=127.0.0.1&port=\(port)"
+        if !secret.isEmpty {
+            defaultUrl += "&secret=\(secret)"
+        }
         if let url = URL(string: defaultUrl) {
             Logger.log("dashboard url:\(defaultUrl)")
             webview.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 0))

@@ -219,8 +219,20 @@ extension PrivilegedHelperManager {
         if case .success = result {
             return
         }
+
+        // If SMJobBless failed but legacy install is possible,
+        // silently fall back without showing the error dialog.
+        // User already consented to installation above.
+        if result.shouldRetryLegacyWay() {
+            Logger.log("SMJobBless failed, falling back to legacy install: \(result.alertContent)", level: .warning)
+            legacyInstallHelper()
+            if !cancelInstallCheck {
+                checkInstall()
+            }
+            return
+        }
+
         result.alertAction()
-        useLegacyInstall = result.shouldRetryLegacyWay()
         NSAlert.alert(with: result.alertContent)
         if !cancelInstallCheck {
             checkInstall()
