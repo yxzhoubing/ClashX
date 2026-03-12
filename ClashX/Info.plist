@@ -128,6 +128,8 @@
 	</dict>
 	<key>SUDisallowSelectChannel</key>
 	<false/>
+	<key>SUPublicEDKey</key>
+	<string>O+gNSh16a5FEGHwPrffpFzE35WbN/wjOctobXqHrUWU=</string>
 	<key>SUFeedURL</key>
 	<string>https://clashx-pro.github.io/ClashX/appcast.xml</string>
 </dict>
