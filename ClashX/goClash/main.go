@@ -34,6 +34,7 @@ import (
 
 var secretOverride string = ""
 var enableIPV6 bool = false
+var savedUIPath string
 
 func isAddrValid(addr string) bool {
 	if addr != "" {
@@ -256,7 +257,8 @@ func run(checkConfig, allowLan, ipv6 bool, portOverride uint32, externalControll
 
 //export setUIPath
 func setUIPath(path *C.char) {
-	route.SetUIPath(C.GoString(path))
+	savedUIPath = C.GoString(path)
+	route.SetUIPath(savedUIPath)
 }
 
 //export clashUpdateConfig
@@ -266,7 +268,23 @@ func clashUpdateConfig(path *C.char) *C.char {
 		return C.CString(err.Error())
 	}
 	cfg.General.IPv6 = enableIPV6
+
+	if cfg.General.MixedPort > 0 && !checkPortAvailable(cfg.General.MixedPort) {
+		if port, err := freeport.GetFreePort(); err == nil {
+			cfg.General.MixedPort = port
+		}
+	}
+	if cfg.General.Port > 0 && !checkPortAvailable(cfg.General.Port) {
+		cfg.General.Port = 0
+	}
+	if cfg.General.SocksPort > 0 && !checkPortAvailable(cfg.General.SocksPort) {
+		cfg.General.SocksPort = 0
+	}
+
 	executor.ApplyConfig(cfg, false)
+	if savedUIPath != "" {
+		route.SetUIPath(savedUIPath)
+	}
 	return C.CString("success")
 }
 
