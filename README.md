@@ -24,6 +24,7 @@ This project is based on code originally created by [yichengchen](https://github
 - 📥 [Download Latest Version](https://clashx.tech/download)
 - 📖 [Documentation & Tutorial](https://clashx.tech/tutorial)
 - ❓ [FAQ](https://clashx.tech/tutorial#faq)
+- 🚀 **Next-Gen Client**: [ClashFX](https://clashfx.com) — A modern macOS proxy client with visual config editor
 
 ---
 
