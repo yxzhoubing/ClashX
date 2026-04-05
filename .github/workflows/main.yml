@@ -77,8 +77,7 @@ jobs:
           -configuration Release \
           -derivedDataPath ./build_derived_data \
           CODE_SIGN_IDENTITY="-" \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO
+          ENABLE_HARDENED_RUNTIME=NO
 
         # Find the built .app
         echo "Looking for built app..."
@@ -109,6 +108,12 @@ jobs:
         echo "Checking SMJobBless Vailded"
         python3 SMJobBlessUtil.py check ClashX.app || echo "SMJobBless check skipped"
         echo "Build complete!"
+
+    - name: free disk space
+      run: |
+        rm -rf build_derived_data
+        rm -rf ~/Library/Developer/Xcode/DerivedData
+        echo "Freed disk space: $(df -h / | tail -1 | awk '{print $4}') available"
 
     - name: create dmg
       if: startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[beta]')
@@ -144,6 +149,27 @@ jobs:
           echo "Error: DMG creation failed!"
           exit 1
         fi
+
+    - name: sign dmg with sparkle
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+      run: |
+        SIGN_OUTPUT=$(echo "$SPARKLE_PRIVATE_KEY" | ./Pods/Sparkle/bin/sign_update --ed-key-file - ClashX.dmg)
+        echo "Sparkle signature output: $SIGN_OUTPUT"
+
+        SIGNATURE=$(echo "$SIGN_OUTPUT" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')
+        LENGTH=$(echo "$SIGN_OUTPUT" | sed -n 's/.*length="\([^"]*\)".*/\1/p')
+
+        if [ -z "$SIGNATURE" ] || [ -z "$LENGTH" ]; then
+          echo "Error: Failed to parse signature or length"
+          echo "Raw output: $SIGN_OUTPUT"
+          exit 1
+        fi
+
+        echo "SPARKLE_SIGNATURE=$SIGNATURE" >> $GITHUB_ENV
+        echo "SPARKLE_LENGTH=$LENGTH" >> $GITHUB_ENV
+        echo "Signed successfully: signature=${SIGNATURE:0:20}... length=$LENGTH"
 
     # 临时禁用公证步骤（需要 Apple Developer 账号）
     # - name: notarize
@@ -183,8 +209,61 @@ jobs:
         files: |
             ClashX.app.dSYM.zip
             ClashX.dmg
-        draft: true
-        prerelease: true
+        draft: false
+        prerelease: false
+
+    - name: update appcast.xml
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        tag=${GITHUB_REF##*/}
+        python3 - "$tag" "$SPARKLE_SIGNATURE" "$SPARKLE_LENGTH" <<'PYEOF'
+        import sys, re
+        from datetime import datetime, timezone
+
+        tag, signature, length = sys.argv[1], sys.argv[2], sys.argv[3]
+        pub_date = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S %z")
+
+        notes_html = f"<h2>ClashX v{tag}</h2><p>See release notes on GitHub.</p>"
+
+        new_item = f"""    <item>
+  <title>Version {tag}</title>
+  <description><![CDATA[
+    {notes_html}
+  ]]></description>
+  <pubDate>{pub_date}</pubDate>
+  <sparkle:version>{tag}</sparkle:version>
+  <sparkle:shortVersionString>{tag}</sparkle:shortVersionString>
+  <sparkle:minimumSystemVersion>10.14</sparkle:minimumSystemVersion>
+  <enclosure
+    url="https://github.com/ClashX-Pro/ClashX/releases/download/{tag}/ClashX.dmg"
+    sparkle:version="{tag}"
+    sparkle:shortVersionString="{tag}"
+    sparkle:edSignature="{signature}"
+    length="{length}"
+    type="application/octet-stream"
+  />
+</item>"""
+
+        with open("docs/appcast.xml") as f:
+            xml = f.read()
+
+        marker = "<language>en</language>"
+        xml = xml.replace(marker, marker + "\n" + new_item, 1)
+
+        with open("docs/appcast.xml", "w") as f:
+            f.write(xml)
+
+        print(f"Updated appcast.xml with version {tag}")
+        PYEOF
+
+    - name: push appcast update
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add docs/appcast.xml
+        git commit -m "release: update appcast.xml for v${GITHUB_REF##*/} [skip ci]"
+        git push origin HEAD:master
 
     - name: notify website repos
       if: startsWith(github.ref, 'refs/tags/')

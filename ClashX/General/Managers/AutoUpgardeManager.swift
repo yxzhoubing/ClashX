@@ -10,106 +10,38 @@ import Cocoa
 import Sparkle
 
 class AutoUpgardeManager: NSObject {
-    var checkForUpdatesMenuItem: NSMenuItem?
     static let shared = AutoUpgardeManager()
-    private var controller: SPUStandardUpdaterController?
-    private var current: Channel = {
-        if let value = UserDefaults.standard.object(forKey: "AutoUpgardeManager.current") as? Int,
-           let channel = Channel(rawValue: value) { return channel }
-        #if PRO_VERSION
-            return .appcenter
-        #else
-            return .stable
-        #endif
-    }() {
-        didSet {
-            UserDefaults.standard.set(current.rawValue, forKey: "AutoUpgardeManager.current")
-        }
-    }
 
-    private var allowSelectChannel: Bool {
-        return Bundle.main.object(forInfoDictionaryKey: "SUDisallowSelectChannel") as? Bool != true
+    private let updaterController: SPUStandardUpdaterController
+
+    override private init() {
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: nil,
+            userDriverDelegate: nil
+        )
+        super.init()
     }
 
     // MARK: Public
 
-    func setup() {
-        controller = SPUStandardUpdaterController(updaterDelegate: self, userDriverDelegate: nil)
-    }
+    func setup() {}
 
     func setupCheckForUpdatesMenuItem(_ item: NSMenuItem) {
-        checkForUpdatesMenuItem = item
-        checkForUpdatesMenuItem?.target = controller
-        checkForUpdatesMenuItem?.action = #selector(SPUStandardUpdaterController.checkForUpdates(_:))
+        item.target = self
+        item.action = #selector(checkForUpdates(_:))
     }
 
-    func addChannelMenuItem(_ button: NSPopUpButton) {
-        for channel in Channel.allCases {
-            button.addItem(withTitle: channel.title)
-            button.lastItem?.tag = channel.rawValue
-        }
-        button.target = self
-        button.action = #selector(didselectChannel(sender:))
-        button.selectItem(withTag: current.rawValue)
-    }
-
-    @objc func didselectChannel(sender: NSPopUpButton) {
-        guard let tag = sender.selectedItem?.tag, let channel = Channel(rawValue: tag) else { return }
-        current = channel
-    }
-}
-
-extension AutoUpgardeManager: SPUUpdaterDelegate {
-    func feedURLString(for updater: SPUUpdater) -> String? {
-        guard WebPortalManager.hasWebProtal == false, allowSelectChannel else { return nil }
-        return current.urlString
-    }
-
-    func updaterWillRelaunchApplication(_ updater: SPUUpdater) {
-        SystemProxyManager.shared.disableProxy(port: 0, socksPort: 0, forceDisable: true)
-    }
-}
-
-// MARK: - Channel Enum
-
-extension AutoUpgardeManager {
-    enum Channel: Int, CaseIterable {
-        #if !PRO_VERSION
-            case stable
-            case prelease
-        #endif
-        case appcenter
-    }
-}
-
-extension AutoUpgardeManager.Channel {
-    var title: String {
-        switch self {
-        #if !PRO_VERSION
-            case .stable:
-                return NSLocalizedString("Stable", comment: "")
-            case .prelease:
-                return NSLocalizedString("Prelease", comment: "")
-        #endif
-        case .appcenter:
-            return "Appcenter"
+    @objc func checkForUpdates(_ sender: Any) {
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.updaterController.checkForUpdates(sender)
         }
     }
 
-    var urlString: String {
-        switch self {
-        #if !PRO_VERSION
-            case .stable:
-                return "https://clashx-pro.github.io/ClashX/appcast.xml"
-            case .prelease:
-                return "https://clashx-pro.github.io/ClashX/appcast.xml"
-        #endif
-        case .appcenter:
-            #if PRO_VERSION
-                return "https://api.appcenter.ms/v0.1/public/sparkle/apps/1cd052f7-e118-4d13-87fb-35176f9702c1"
-            #else
-                return "https://clashx-pro.github.io/ClashX/appcast.xml"
-            #endif
-        }
+    func addChannelMenuItem(_ button: NSPopUpButton) {}
+
+    var updater: SPUUpdater {
+        updaterController.updater
     }
 }
