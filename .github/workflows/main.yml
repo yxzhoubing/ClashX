@@ -226,23 +226,23 @@ jobs:
         notes_html = f"<h2>ClashX v{tag}</h2><p>See release notes on GitHub.</p>"
 
         new_item = f"""    <item>
-  <title>Version {tag}</title>
-  <description><![CDATA[
-    {notes_html}
-  ]]></description>
-  <pubDate>{pub_date}</pubDate>
-  <sparkle:version>{tag}</sparkle:version>
-  <sparkle:shortVersionString>{tag}</sparkle:shortVersionString>
-  <sparkle:minimumSystemVersion>10.14</sparkle:minimumSystemVersion>
-  <enclosure
-    url="https://github.com/ClashX-Pro/ClashX/releases/download/{tag}/ClashX.dmg"
-    sparkle:version="{tag}"
-    sparkle:shortVersionString="{tag}"
-    sparkle:edSignature="{signature}"
-    length="{length}"
-    type="application/octet-stream"
-  />
-</item>"""
+          <title>Version {tag}</title>
+          <description><![CDATA[
+            {notes_html}
+          ]]></description>
+          <pubDate>{pub_date}</pubDate>
+          <sparkle:version>{tag}</sparkle:version>
+          <sparkle:shortVersionString>{tag}</sparkle:shortVersionString>
+          <sparkle:minimumSystemVersion>10.14</sparkle:minimumSystemVersion>
+          <enclosure
+            url="https://github.com/ClashX-Pro/ClashX/releases/download/{tag}/ClashX.dmg"
+            sparkle:version="{tag}"
+            sparkle:shortVersionString="{tag}"
+            sparkle:edSignature="{signature}"
+            length="{length}"
+            type="application/octet-stream"
+          />
+        </item>"""
 
         with open("docs/appcast.xml") as f:
             xml = f.read()
